@@ -151,13 +151,14 @@ void gauss (BMP *bmp){
                              {4, 16, 26, 16, 4},
                              {1, 4, 7, 4, 1}}
     ;
+
     int w = 273;
 
 
 
     for(int i = 0; i < bmp->data.size()  ; i++){
         for(int j = 0; j < bmp->data[i].size() ; j++){
-            cout<< i << " - " << j << endl;
+            //cout<< i << " - " << j << endl;
             int R=0;
             int G=0;
             int B=0;
@@ -173,7 +174,7 @@ void gauss (BMP *bmp){
             bmp->data[i][j].R = (byte)(R/w);
             bmp->data[i][j].G = (byte)(G/w);
             bmp->data[i][j].B = (byte)(B/w);
-            cout << R/w << "," << G/w << "," << B/w << endl;
+            //cout << R/w << "," << G/w << "," << B/w << endl;
 
 
         }
@@ -182,7 +183,54 @@ void gauss (BMP *bmp){
 
 void sobel (BMP *bmp)
 {
+    vector<vector<int>> x = {{1, 2, 1},
+                            {0, 0, 0},
+                            {-1, -2, -1}};
 
+    vector<vector<int>> y = {{-1, 0, 1},
+                        {-2, 0, 2},
+                        {-1, 0, 1}};
+
+    int w = 8;
+
+
+    for(int i =0; i<bmp->data.size(); i++){
+        for(int j=0; j< bmp->data[i].size(); j++){
+            //Colors for matrix X
+            int RX=0;
+            int GX=0;
+            int BX=0;
+            //Colors for matrix Y
+            int RY=0;
+            int GY=0;
+            int BY=0;
+            for(int s = -1; s <= 1 ; s++) {
+                for (int t = -1; t <= 1; t++) {
+                    if(!((i+s) < 0 || (i+s) >= bmp->data.size() || (j+t) < 0 || (j+t) >= bmp->data[i].size())) {
+                        //res x
+                        RX += x[s + 1][t + 1] * (int) bmp->data[i + s][j + t].R;
+                        GX += x[s + 1][t + 1] * (int) bmp->data[i + s][j + t].G;
+                        BX += x[s + 1][t + 1] * (int) bmp->data[i + s][j + t].B;
+                        //res y
+                        RY += y[s + 1][t + 1] * (int) bmp->data[i + s][j + t].R;
+                        GY += y[s + 1][t + 1] * (int) bmp->data[i + s][j + t].G;
+                        BY += y[s + 1][t + 1] * (int) bmp->data[i + s][j + t].B;
+                    }
+                }
+            }
+            RX = RX/w;
+            GX = GX/w;
+            BX = BX/w;
+
+            RY = RY/w;
+            GY = GY/w;
+            BY = BY/w;
+
+            bmp->data[i][j].R = (byte)(abs(RX) + abs(RY));
+            bmp->data[i][j].G = (byte)(abs(GX) + abs(GY));
+            bmp->data[i][j].B = (byte)(abs(BX) + abs(BY));
+        }
+    }
 
 }
 
