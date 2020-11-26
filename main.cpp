@@ -28,27 +28,17 @@ void readBMP(string *filename, BMP* bmp)
     ifstream in {filename->c_str()};
     FILE *f = fopen(filename->c_str(), "rb");
 
-    // byte b;
-    // // Read the next line from File untill it reaches the end.
-    // while (in.readsome((char *) b, sizeof byte))
-    // {
-    //     // Line contains string of length > 0 then save it in vector
-    //     if(b.size() > 0)
-    //         bmp->header.push_back(b);
-    // }
-    // //Close The File
-    // in.close();
-
     // read the 54-byte header
     bmp->header.resize(54);
 
     fread(&bmp->header[0], sizeof(byte), 54, f);
 
+
     // extract image height and width from header
     int width = *(int *)&bmp->header[18];
     int height = *(int *)&bmp->header[22];
 
-    cout << width << " - " << height << endl;
+    //cout << width << " - " << height << endl;
 
     // allocate 3 bytes per pixel
     // int size = 3 * width * height;
@@ -237,57 +227,53 @@ void sobel (BMP *bmp)
 
 int main(int argc, char *argv[])
 {
-    // if (!strcmp(getenv("DEBUGGING"), "true"))
-    // {
-    //     char *argv2[] = {(char *) "path", (char *) "copy", (char *) "1.bmp", (char *) "out"};
-    //     argc = sizeof(argv2) / sizeof(char*);
-    //     argv = argv2;
-    // }
-
     if (printError(argc, argv))
     {
         return -1;
     }
 
+    // Lectura del archivo bmp
+    BMP bmp;
+    string filename = string (argv[2]);
+    string dir = string (argv[3]);
+    readBMP(&filename, &bmp);
 
+    // Comprobacion de erroresen el header
+    byte dims = *(byte *)bmp.header[27] << 8 | *(byte *)bmp.header[26];
+    if((int)dims != 1){
+        cerr << "Header error:" << endl;
+        cerr << "Illegal number of planes" << endl;
+        return -1;
+    }
+
+    byte pointSize = *(byte *)bmp.header[29] << 8 | *(byte *)bmp.header[28];
+    if((int)pointSize != 24){
+        cerr << "Header error:" << endl;
+        cerr << "Bit count is not 24" << endl;
+        return -1;
+    }
+
+    int compression = *(int *)bmp.header[30];
+    if(compression != 0) {
+        cerr << "Header error:" << endl;
+        cerr << "Compression value is not 0" << endl;
+        return -1;
+    }
+
+    // Ejecución de las funciones
     if(!strcmp(argv[1], "copy"))
     {
-
-        BMP bmp;
-        string filename = string (argv[2]);
-        string dir = string (argv[3]);
-        readBMP(&filename, &bmp);
         writeBMP(&bmp, &dir);
-
-        //   return copyFile(argv[2], argv[3]) ? 0 : 1;
-
-    }
-
-    if(!strcmp(argv[1], "gauss"))
+    } else if(!strcmp(argv[1], "gauss"))
     {
-
-        BMP bmp;
-        string filename = string (argv[2]);
-        string dir = string (argv[3]);
-        readBMP(&filename, &bmp);
         gauss(&bmp);
         writeBMP(&bmp, &dir);
-    }
-
-
-    if(!strcmp(argv[1], "sobel"))
+    } else if(!strcmp(argv[1], "sobel"))
     {
-        BMP bmp;
-        string filename = string (argv[2]);
-        string dir = string (argv[3]);
-        readBMP(&filename, &bmp);
         gauss(&bmp);
         sobel(&bmp);
         writeBMP(&bmp, &dir);
     }
-
-    // char* path = "./1.bmp";
-    // BMP bmp = readBMP(path);
 
     return 0;
 }
