@@ -10,10 +10,16 @@
 #include <cstddef>
 using namespace std;
 
+struct Color {
+    byte R;
+    byte G;
+    byte B;
+};
+
 struct BMP
 {
     vector<byte> header;
-    vector<byte> data;
+    vector<vector<Color>> data;
 };
 
 
@@ -37,21 +43,27 @@ void readBMP(string *filename, BMP* bmp)
     bmp->header.resize(54);
 
     fread(&bmp->header[0], sizeof(byte), 54, f);
-    cout << "4" << endl;
 
     // extract image height and width from header
     int width = *(int *)&bmp->header[18];
     int height = *(int *)&bmp->header[22];
-    cout << "5" << endl;
+
+    cout << width << " - " << height << endl;
 
     // allocate 3 bytes per pixel
-    int size = 3 * width * height;
-    cout << "6" << endl;
-    bmp->data.resize(size);
-    cout << "7" << endl;
+    // int size = 3 * width * height;
+    bmp->data.resize(height);
 
-    fread(&bmp->data[0], sizeof(byte), size, f);
-    cout << "8" << endl;
+    for (int i = 0; i < height; i++) {
+        bmp->data[i].resize(width);
+        for (int j = 0; j < width; j++){
+            Color color;
+            fread(&color.R, sizeof(byte), 1, f);
+            fread(&color.G, sizeof(byte), 1, f);
+            fread(&color.B, sizeof(byte), 1, f);
+            bmp->data[i][j] = color;
+        }
+    }
 
     fclose(f);
 
@@ -69,7 +81,14 @@ void writeBMP(BMP *bmp, string *dir)
     dir->append("/out.bmp");
 
     vector<byte> image {bmp->header};
-    image.insert(image.end(), bmp->data.begin(), bmp->data.end());
+    for (int i = 0; i < bmp->data.size(); i++) {
+        for(int j = 0; j < bmp->data[i].size(); j++) {
+            Color pixel = bmp->data[i][j];
+            image.push_back(pixel.R);
+            image.push_back(pixel.G);
+            image.push_back(pixel.B);
+        }
+    }
 
     FILE *f = fopen(dir->c_str(), "wb");
     fwrite(&image[0], sizeof(byte), image.size(), f);
@@ -124,6 +143,50 @@ bool printError(int argc, char *argv[])
 //     return src && dest;
 // }
 
+void gauss (BMP *bmp){
+
+    vector<vector<int>> m = {{1, 4, 7, 4, 1},
+                             {4, 16, 26, 16, 4},
+                             {7, 26, 41, 26, 7},
+                             {4, 16, 26, 16, 4},
+                             {1, 4, 7, 4, 1}}
+    ;
+    int w = 273;
+
+
+
+    for(int i = 0; i < bmp->data.size()  ; i++){
+        for(int j = 0; j < bmp->data[i].size() ; j++){
+            cout<< i << " - " << j << endl;
+            int R=0;
+            int G=0;
+            int B=0;
+            for(int s = -2; s <= 2 ; s++){
+                for(int t = -2; t <= 2 ; t++){
+                    if(!((i+s) < 0 || (i+s) >= bmp->data.size() || (j+t) < 0 || (j+t) >= bmp->data[i].size())) {
+                        R += m[s + 2][t + 2] * (int) bmp->data[i + s][j + t].R;
+                        G += m[s + 2][t + 2] * (int) bmp->data[i + s][j + t].G;
+                        B += m[s + 2][t + 2] * (int) bmp->data[i + s][j + t].B;
+                    }
+                }
+            }
+            bmp->data[i][j].R = (byte)(R/w);
+            bmp->data[i][j].G = (byte)(G/w);
+            bmp->data[i][j].B = (byte)(B/w);
+            cout << R/w << "," << G/w << "," << B/w << endl;
+
+
+        }
+    }
+}
+
+void sobel (BMP *bmp)
+{
+
+
+}
+
+
 int main(int argc, char *argv[])
 {
     // if (!strcmp(getenv("DEBUGGING"), "true"))
@@ -138,28 +201,41 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+
     if(!strcmp(argv[1], "copy"))
     {
+
         BMP bmp;
         string filename = string (argv[2]);
         string dir = string (argv[3]);
         readBMP(&filename, &bmp);
-        cout << "5" << endl;
         writeBMP(&bmp, &dir);
-        cout << "6" << endl;
 
-        //    return copyFile(argv[2], argv[3]) ? 0 : 1;
+        //   return copyFile(argv[2], argv[3]) ? 0 : 1;
 
     }
 
     if(!strcmp(argv[1], "gauss"))
     {
 
+        BMP bmp;
+        string filename = string (argv[2]);
+        string dir = string (argv[3]);
+        readBMP(&filename, &bmp);
+        gauss(&bmp);
+        writeBMP(&bmp, &dir);
     }
+
 
     if(!strcmp(argv[1], "sobel"))
     {
-
+        BMP bmp;
+        string filename = string (argv[2]);
+        string dir = string (argv[3]);
+        readBMP(&filename, &bmp);
+        gauss(&bmp);
+        sobel(&bmp);
+        writeBMP(&bmp, &dir);
     }
 
     // char* path = "./1.bmp";
