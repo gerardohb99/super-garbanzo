@@ -238,27 +238,27 @@ int main(int argc, char *argv[])
     string dir = string (argv[3]);
     readBMP(&filename, &bmp);
 
-    // Comprobacion de erroresen el header
-    byte dims = *(byte *)bmp.header[27] << 8 | *(byte *)bmp.header[26];
-    if((int)dims != 1){
-        cerr << "Header error:" << endl;
-        cerr << "Illegal number of planes" << endl;
-        return -1;
-    }
+//    // Comprobacion de erroresen el header
+//    byte dims = *(byte *)bmp.header[27] << 8 | *(byte *)bmp.header[26];
+//    if((int)dims != 1){
+//        cerr << "Header error:" << endl;
+//        cerr << "Illegal number of planes" << endl;
+//        return -1;
+//    }
 
-    byte pointSize = *(byte *)bmp.header[29] << 8 | *(byte *)bmp.header[28];
-    if((int)pointSize != 24){
-        cerr << "Header error:" << endl;
-        cerr << "Bit count is not 24" << endl;
-        return -1;
-    }
+//    byte pointSize = *(byte *)bmp.header[29] << 8 | *(byte *)bmp.header[28];
+//    if((int)pointSize != 24){
+//        cerr << "Header error:" << endl;
+//        cerr << "Bit count is not 24" << endl;
+//        return -1;
+//    }
 
-    int compression = *(int *)bmp.header[30];
-    if(compression != 0) {
-        cerr << "Header error:" << endl;
-        cerr << "Compression value is not 0" << endl;
-        return -1;
-    }
+//    int compression = *(int *)bmp.header[30];
+//    if(compression != 0) {
+//        cerr << "Header error:" << endl;
+//        cerr << "Compression value is not 0" << endl;
+//        return -1;
+//    }
 
     // Ejecución de las funciones
     if(!strcmp(argv[1], "copy"))
