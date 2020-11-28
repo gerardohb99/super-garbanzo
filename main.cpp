@@ -23,65 +23,104 @@ struct BMP
 };
 
 
-void readBMP(string *filename, BMP* bmp)
+int readBMP(string *filename, BMP* bmp)
 {
-    ifstream in {filename->c_str()};
     FILE *f = fopen(filename->c_str(), "rb");
 
-    // read the 54-byte header
-    bmp->header.resize(54);
+    // read the first part of the header
+    bmp->header.resize(14);
+    fread(&bmp->header[0], sizeof(byte), 14, f);
+    int start = *(int *)&bmp->header[10];
 
-    fread(&bmp->header[0], sizeof(byte), 54, f);
+    // read the remaining part of the header
+    fseek(f, 0, SEEK_SET);
+    bmp->header.resize(start);
+    fread(&bmp->header[0], sizeof(byte), start, f);
 
+    // Comprobacion de erroresen el header
+    byte dims = *(byte *)&bmp->header[27] << 8 | *(byte *)&bmp->header[26];
+    if((int)dims != 1){
+        cerr << "Header error:" << endl;
+        cerr << "Illegal number of planes" << endl;
+        return -1;
+    }
 
-    // extract image height and width from header
+    byte pointSize = *(byte *)&bmp->header[29] << 8 | *(byte *)&bmp->header[28];
+    if((int)pointSize != 24){
+        cerr << "Header error:" << endl;
+        cerr << "Bit count is not 24" << endl;
+        return -1;
+    }
+
+    int compression = *(int *)&bmp->header[30];
+    if(compression != 0) {
+        cerr << "Header error:" << endl;
+        cerr << "Compression value is not 0" << endl;
+        return -1;
+    }
+
     int width = *(int *)&bmp->header[18];
-    int height = *(int *)&bmp->header[22];
+    int height = *(int *)&bmp->header[22] + 1;
 
-    //cout << width << " - " << height << endl;
-
-    // allocate 3 bytes per pixel
-    // int size = 3 * width * height;
     bmp->data.resize(height);
+
+    fseek(f, start, SEEK_SET);
 
     for (int i = 0; i < height; i++) {
         bmp->data[i].resize(width);
         for (int j = 0; j < width; j++){
             Color color;
-            fread(&color.R, sizeof(byte), 1, f);
-            fread(&color.G, sizeof(byte), 1, f);
             fread(&color.B, sizeof(byte), 1, f);
+            fread(&color.G, sizeof(byte), 1, f);
+            fread(&color.R, sizeof(byte), 1, f);
             bmp->data[i][j] = color;
         }
     }
 
     fclose(f);
-
-    // for(i = 0; i < size; i += 3)
-    // {
-    //     // flip the order of every 3 bytes
-    //     unsigned char tmp = data[i];
-    //     data[i] = data[i+2];
-    //     data[i+2] = tmp;
-    // }
 }
 
 void writeBMP(BMP *bmp, string *dir)
 {
-    dir->append("/out.bmp");
+    // dir->append("/out.bmp");
 
-    vector<byte> image {bmp->header};
+    // vector<byte> image {bmp->header};
+    // int rowWidth = bmp->data[0].size();
+
+    // for (int i = 0; i < bmp->data.size(); i++) {
+    //     for(int j = 0; j < rowWidth; j++) {
+    //         Color pixel = bmp->data[i][j];
+    //         image.push_back(pixel.B);
+    //         image.push_back(pixel.G);
+    //         image.push_back(pixel.R);
+    //     }
+
+    // }
+
+    // FILE *f = fopen(dir->c_str(), "wb");
+    // fwrite(&image[0], sizeof(byte), image.size(), f);
+
+    dir->append("/out.bmp");
+    FILE *f = fopen(dir->c_str(), "wb");
+
+    fwrite(&bmp->header[0], sizeof(byte), bmp->header.size(), f);
+
+    byte zeros[8] = { };
+
+    int rowWidth = bmp->data[0].size();
+    int wordSize = sizeof(size_t);
     for (int i = 0; i < bmp->data.size(); i++) {
-        for(int j = 0; j < bmp->data[i].size(); j++) {
+        for(int j = 0; j < rowWidth; j++) {
             Color pixel = bmp->data[i][j];
-            image.push_back(pixel.R);
-            image.push_back(pixel.G);
-            image.push_back(pixel.B);
+            fwrite(&pixel.B, sizeof(byte), 1, f);
+            fwrite(&pixel.G, sizeof(byte), 1, f);
+            fwrite(&pixel.R, sizeof(byte), 1, f);
         }
+        // int padding = wordSize - ftell(f) % wordSize;
+        // fwrite(&zeros[0], sizeof(byte), padding, f);
     }
 
-    FILE *f = fopen(dir->c_str(), "wb");
-    fwrite(&image[0], sizeof(byte), image.size(), f);
+    fclose(f);
 }
 
 bool printError(int argc, char *argv[])
@@ -118,9 +157,11 @@ bool printError(int argc, char *argv[])
     {
         cerr << "Input path: " << argv[2] << "\nOutput path: " << argv[3] << "\nOutput directory [" << argv[3] << "] does not exist" << endl;
         cerr << "\timage-seq operation in_path out_path\n\t\toperation: copy, gauss, sobel\n";
-        return true;
     }
     closedir(dr);
+
+    //Falta comprobarsi los paramatros de la imagen cumple los necesarios
+
 
     return false;
 }
@@ -144,16 +185,13 @@ void gauss (BMP *bmp){
 
     int w = 273;
 
-
-
-    for(int i = 0; i < bmp->data.size()  ; i++){
-        for(int j = 0; j < bmp->data[i].size() ; j++){
-            //cout<< i << " - " << j << endl;
+    for(int i = 0; i < bmp->data.size(); i++){
+        for(int j = 0; j < bmp->data[i].size(); j++){
             int R=0;
             int G=0;
             int B=0;
-            for(int s = -2; s <= 2 ; s++){
-                for(int t = -2; t <= 2 ; t++){
+            for(int s = -2; s <= 2; s++){
+                for(int t = -2; t <= 2; t++){
                     if(!((i+s) < 0 || (i+s) >= bmp->data.size() || (j+t) < 0 || (j+t) >= bmp->data[i].size())) {
                         R += m[s + 2][t + 2] * (int) bmp->data[i + s][j + t].R;
                         G += m[s + 2][t + 2] * (int) bmp->data[i + s][j + t].G;
@@ -161,12 +199,9 @@ void gauss (BMP *bmp){
                     }
                 }
             }
-            bmp->data[i][j].R = (byte)(R/w);
-            bmp->data[i][j].G = (byte)(G/w);
-            bmp->data[i][j].B = (byte)(B/w);
-            //cout << R/w << "," << G/w << "," << B/w << endl;
-
-
+            bmp->data[i][j].R = (byte) (R / w);
+            bmp->data[i][j].G = (byte) (G / w);
+            bmp->data[i][j].B = (byte) (B / w);
         }
     }
 }
@@ -224,41 +259,32 @@ void sobel (BMP *bmp)
 
 }
 
+void restaBMP (BMP *bmp1, BMP * bmp2){
+
+    if (bmp1->data.size() == bmp2->data.size() && bmp1->data[0].size() == bmp2->data[0].size()) {
+        for (int i = 0; i < bmp1->data.size(); i++) {
+            for (int j = 0; j < bmp1->data[i].size(); j++) {
+                bmp2->data[i][j].R = (byte)(abs((int) bmp1->data[i][j].R - (int) bmp2->data[i][j].R));
+                bmp2->data[i][j].G = (byte)(abs((int) bmp1->data[i][j].G - (int) bmp2->data[i][j].G));
+                bmp2->data[i][j].B = (byte)(abs((int) bmp1->data[i][j].B - (int) bmp1->data[i][j].B));
+            }
+        }
+    }
+}
+
 
 int main(int argc, char *argv[])
 {
-    if (printError(argc, argv))
-    {
-        return -1;
-    }
+//    if (printError(argc, argv))
+//    {
+//        return -1;
+//    }
 
     // Lectura del archivo bmp
     BMP bmp;
     string filename = string (argv[2]);
     string dir = string (argv[3]);
     readBMP(&filename, &bmp);
-
-//    // Comprobacion de erroresen el header
-//    byte dims = *(byte *)bmp.header[27] << 8 | *(byte *)bmp.header[26];
-//    if((int)dims != 1){
-//        cerr << "Header error:" << endl;
-//        cerr << "Illegal number of planes" << endl;
-//        return -1;
-//    }
-
-//    byte pointSize = *(byte *)bmp.header[29] << 8 | *(byte *)bmp.header[28];
-//    if((int)pointSize != 24){
-//        cerr << "Header error:" << endl;
-//        cerr << "Bit count is not 24" << endl;
-//        return -1;
-//    }
-
-//    int compression = *(int *)bmp.header[30];
-//    if(compression != 0) {
-//        cerr << "Header error:" << endl;
-//        cerr << "Compression value is not 0" << endl;
-//        return -1;
-//    }
 
     // Ejecución de las funciones
     if(!strcmp(argv[1], "copy"))
@@ -274,6 +300,15 @@ int main(int argc, char *argv[])
         sobel(&bmp);
         writeBMP(&bmp, &dir);
     }
+    else if(!strcmp(argv[1], "minus"))
+    {
+        BMP bmp2;
+        string filename2 = string (argv[4]);
+        readBMP(&filename2, &bmp2);
+        restaBMP(&bmp, &bmp2);
+        writeBMP(&bmp2, &dir);
+    }
+
 
     return 0;
 }
