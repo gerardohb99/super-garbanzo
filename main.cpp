@@ -60,11 +60,16 @@ int readBMP(string *filename, BMP* bmp)
     }
 
     int width = *(int *)&bmp->header[18];
-    int height = *(int *)&bmp->header[22] + 1;
+    int height = *(int *)&bmp->header[22];
 
     bmp->data.resize(height);
 
     fseek(f, start, SEEK_SET);
+
+
+    //Move
+
+    int padding = (4 -(width%4))%4;
 
     for (int i = 0; i < height; i++) {
         bmp->data[i].resize(width);
@@ -75,6 +80,12 @@ int readBMP(string *filename, BMP* bmp)
             fread(&color.R, sizeof(byte), 1, f);
             bmp->data[i][j] = color;
         }
+        //reading padding
+        if(i!=0){
+            fseek(f, padding, SEEK_CUR);
+        }
+
+
     }
 
     fclose(f);
@@ -107,8 +118,13 @@ void writeBMP(BMP *bmp, string *dir)
 
     byte zeros[8] = { };
 
-    int rowWidth = bmp->data[0].size();
     int wordSize = sizeof(size_t);
+
+    int width = *(int *)&bmp->header[18];
+    int padding = (4 -(width%4))%4;
+
+    int rowWidth = bmp->data[0].size();
+
     for (int i = 0; i < bmp->data.size(); i++) {
         for(int j = 0; j < rowWidth; j++) {
             Color pixel = bmp->data[i][j];
@@ -116,8 +132,10 @@ void writeBMP(BMP *bmp, string *dir)
             fwrite(&pixel.G, sizeof(byte), 1, f);
             fwrite(&pixel.R, sizeof(byte), 1, f);
         }
-        // int padding = wordSize - ftell(f) % wordSize;
-        // fwrite(&zeros[0], sizeof(byte), padding, f);
+        if(i!=0){
+            fwrite(&zeros[0], sizeof(byte), padding, f);
+        }
+
     }
 
     fclose(f);

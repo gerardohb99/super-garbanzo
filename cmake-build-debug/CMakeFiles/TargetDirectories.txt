@@ -1,3 +1,3 @@
-/home/gerardohb/CLionProjects/untitled/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/home/gerardohb/CLionProjects/untitled/cmake-build-debug/CMakeFiles/edit_cache.dir
-/home/gerardohb/CLionProjects/untitled/cmake-build-debug/CMakeFiles/untitled.dir
+/Users/alvaroahp11/Desktop/UC3M/Tercer Año I Cuatrimestre/Arquitectura de Computadores/super-garbanzo/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/Users/alvaroahp11/Desktop/UC3M/Tercer Año I Cuatrimestre/Arquitectura de Computadores/super-garbanzo/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/alvaroahp11/Desktop/UC3M/Tercer Año I Cuatrimestre/Arquitectura de Computadores/super-garbanzo/cmake-build-debug/CMakeFiles/untitled.dir
