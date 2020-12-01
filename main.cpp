@@ -89,42 +89,87 @@ int readBMP(string *filename, BMP* bmp)
     fclose(f);
 }
 
+void writeInByteArray(byte* dest, byte info[], uint infoSize ){
+    for (int i = 0; i < infoSize; i++){
+        dest[i] =  info[i];
+    }
+}
+
 void writeBMP(BMP *bmp, string *dir)
 {
-    // dir->append("/out.bmp");
-
-    // vector<byte> image {bmp->header};
-    // int rowWidth = bmp->data[0].size();
-
-    // for (int i = 0; i < bmp->data.size(); i++) {
-    //     for(int j = 0; j < rowWidth; j++) {
-    //         Color pixel = bmp->data[i][j];
-    //         image.push_back(pixel.B);
-    //         image.push_back(pixel.G);
-    //         image.push_back(pixel.R);
-    //     }
-
-    // }
-
-    // FILE *f = fopen(dir->c_str(), "wb");
-    // fwrite(&image[0], sizeof(byte), image.size(), f);
-
     dir->append("/out.bmp");
     FILE *f = fopen(dir->c_str(), "wb");
+    int width = bmp->data[0].size();
+    int height = bmp->data.size();
+    int padding = (4 -(3*width%4))%4;
 
-    fwrite(&bmp->header[0], sizeof(byte), bmp->header.size(), f);
+    int zero = 0;
+    byte* zeroArray = static_cast<byte*> (static_cast<void*>(&zero));
+
+    //write size of file in header
+    int sizeFile = 3 * width * height + height*padding + 54 ;
+    byte* sizeFileArrayByte = static_cast<byte*> (static_cast<void*>(&sizeFile));
+    writeInByteArray(&bmp->header[2], sizeFileArrayByte, sizeof(int));
+
+    //write zero in header[6]
+    writeInByteArray(&bmp->header[6], zeroArray, sizeof(int));
+
+    //write data offset
+    int dataStart = 54;
+    byte* dataStartArray = static_cast<byte*> (static_cast<void*>(&dataStart));
+    writeInByteArray(&bmp->header[10], dataStartArray, sizeof(int));
+
+    //write bitmap header size
+    int bitMapHSize = 40;
+    byte* bitMapHSizeArray = static_cast<byte*> (static_cast<void*>(&bitMapHSize));
+    writeInByteArray(&bmp->header[14], bitMapHSizeArray, sizeof(int));
+
+    //write image Width in pixels
+    byte* widthImageArray  = static_cast<byte*> (static_cast<void*>(&width));
+    writeInByteArray(&bmp->header[18], widthImageArray, sizeof(int));
+
+    //write image height in pixels
+    byte* heightImageArray  = static_cast<byte*> (static_cast<void*>(&height));
+    writeInByteArray(&bmp->header[22], heightImageArray, sizeof(int));
+
+    //write dims number OJO, SOLO ESTOY ESCRIBIENDO 2 BYTES PREGUNTAR ERWOR (EN DEBUG FUNCINA)
+    int dims = 1;
+    byte* dimsArray  = static_cast<byte*> (static_cast<void*>(&dims));
+    writeInByteArray(&bmp->header[26], dimsArray, 2);
+
+    //write  in header[28]
+    int pointSize = 24;
+    byte* pointSizeArray  = static_cast<byte*> (static_cast<void*>(&pointSize));
+    writeInByteArray(&bmp->header[28], pointSizeArray, 2);
+
+    //write compretion value
+    writeInByteArray(&bmp->header[30], zeroArray, sizeof(int));
+
+    //write image data size in bytes
+    int dataSize = 3 * width * height + height*padding;
+    byte* dataSizeArray  = static_cast<byte*> (static_cast<void*>(&dataSize));
+    writeInByteArray(&bmp->header[34], dataSizeArray, sizeof(int));
+
+    // write horizontal resolution
+    int horizontalResolution = 2835;
+    byte* horizontalResolutionArray  = static_cast<byte*> (static_cast<void*>(&horizontalResolution));
+    writeInByteArray(&bmp->header[38], horizontalResolutionArray, sizeof(int));
+
+    // write vertical resolution
+    int verticalResolution = 2835;
+    byte* verticalResolutionArray  = static_cast<byte*> (static_cast<void*>(&verticalResolution));
+    writeInByteArray(&bmp->header[42], verticalResolutionArray, sizeof(int));
+
+    writeInByteArray(&bmp->header[46], zeroArray, sizeof(int));
+
+    writeInByteArray(&bmp->header[50], zeroArray, sizeof(int));
+
+    fwrite(&bmp->header[0], sizeof(byte), 54, f);
 
     byte zeros[8] = { };
 
-    int wordSize = sizeof(size_t);
-
-    int width = *(int *)&bmp->header[18];
-    int padding = (4 -(3*width%4))%4;
-
-    int rowWidth = bmp->data[0].size();
-
-    for (int i = 0; i < bmp->data.size(); i++) {
-        for(int j = 0; j < rowWidth; j++) {
+    for (int i = 0; i < height; i++) {
+        for(int j = 0; j < width; j++) {
             Color pixel = bmp->data[i][j];
             fwrite(&pixel.B, sizeof(byte), 1, f);
             fwrite(&pixel.G, sizeof(byte), 1, f);
