@@ -69,7 +69,7 @@ int readBMP(string *filename, BMP* bmp)
 
     //Move
 
-    int padding = (4 -(width%4))%4;
+    int padding = (4 -(3*width%4))%4;
 
     for (int i = 0; i < height; i++) {
         bmp->data[i].resize(width);
@@ -81,9 +81,7 @@ int readBMP(string *filename, BMP* bmp)
             bmp->data[i][j] = color;
         }
         //reading padding
-        if(i!=0){
-            fseek(f, padding, SEEK_CUR);
-        }
+        fseek(f, padding, SEEK_CUR);
 
 
     }
@@ -121,7 +119,7 @@ void writeBMP(BMP *bmp, string *dir)
     int wordSize = sizeof(size_t);
 
     int width = *(int *)&bmp->header[18];
-    int padding = (4 -(width%4))%4;
+    int padding = (4 -(3*width%4))%4;
 
     int rowWidth = bmp->data[0].size();
 
@@ -132,10 +130,7 @@ void writeBMP(BMP *bmp, string *dir)
             fwrite(&pixel.G, sizeof(byte), 1, f);
             fwrite(&pixel.R, sizeof(byte), 1, f);
         }
-        if(i!=0){
-            fwrite(&zeros[0], sizeof(byte), padding, f);
-        }
-
+        fwrite(&zeros[0], sizeof(byte), padding, f);
     }
 
     fclose(f);
@@ -195,6 +190,13 @@ bool printError(int argc, char *argv[])
 void gauss (BMP *bmp){
 
     vector<vector<int>> m = {{1, 4, 7, 4, 1},
+                             {4, 16, 26, 16, 4},
+                             {7, 26, 41, 26, 7},
+                             {4, 16, 26, 16, 4},
+                             {1, 4, 7, 4, 1}}
+    ;
+
+    vector<vector<int>> m2 = {{1, 4, 7, 4, 1},
                              {4, 16, 26, 16, 4},
                              {7, 26, 41, 26, 7},
                              {4, 16, 26, 16, 4},
