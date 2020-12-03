@@ -241,34 +241,33 @@ void gauss (BMP *bmp){
                              {1, 4, 7, 4, 1}}
     ;
 
-    vector<vector<int>> m2 = {{1, 4, 7, 4, 1},
-                             {4, 16, 26, 16, 4},
-                             {7, 26, 41, 26, 7},
-                             {4, 16, 26, 16, 4},
-                             {1, 4, 7, 4, 1}}
-    ;
 
     int w = 273;
+    vector<vector<Color>> dataResult;
+    dataResult.resize(bmp->data.size());
+
 
     for(int i = 0; i < bmp->data.size(); i++){
         for(int j = 0; j < bmp->data[i].size(); j++){
+            dataResult[i].resize(bmp->data[i].size());
             int R=0;
             int G=0;
             int B=0;
             for(int s = -2; s <= 2; s++){
                 for(int t = -2; t <= 2; t++){
-                    if(!((i+s) < 0 || (i+s) >= bmp->data.size() || (j+t) < 0 || (j+t) >= bmp->data[i].size())) {
+                    if(!((i+s) < 0 || (i+s) >= bmp->data.size() || (j+t) < 0 || (j+t) > bmp->data[i].size())) {
                         R += m[s + 2][t + 2] * (int) bmp->data[i + s][j + t].R;
                         G += m[s + 2][t + 2] * (int) bmp->data[i + s][j + t].G;
                         B += m[s + 2][t + 2] * (int) bmp->data[i + s][j + t].B;
                     }
                 }
             }
-            bmp->data[i][j].R = (byte) (R / w);
-            bmp->data[i][j].G = (byte) (G / w);
-            bmp->data[i][j].B = (byte) (B / w);
+            dataResult[i][j].R = (byte) (R / w);
+            dataResult[i][j].G = (byte) (G / w);
+            dataResult[i][j].B = (byte) (B / w);
         }
     }
+    bmp->data = dataResult;
 }
 
 void sobel (BMP *bmp)
@@ -282,10 +281,13 @@ void sobel (BMP *bmp)
                         {-1, 0, 1}};
 
     int w = 8;
+    vector<vector<Color>> dataResult;
+    dataResult.resize(bmp->data.size());
 
 
     for(int i =0; i<bmp->data.size(); i++){
         for(int j=0; j< bmp->data[i].size(); j++){
+            dataResult[i].resize(bmp->data[i].size());
             //Colors for matrix X
             int RX=0;
             int GX=0;
@@ -316,11 +318,12 @@ void sobel (BMP *bmp)
             GY = GY/w;
             BY = BY/w;
 
-            bmp->data[i][j].R = (byte)(abs(RX) + abs(RY));
-            bmp->data[i][j].G = (byte)(abs(GX) + abs(GY));
-            bmp->data[i][j].B = (byte)(abs(BX) + abs(BY));
+            dataResult[i][j].R = (byte)(abs(RX) + abs(RY));
+            dataResult[i][j].G = (byte)(abs(GX) + abs(GY));
+            dataResult[i][j].B = (byte)(abs(BX) + abs(BY));
         }
     }
+    bmp->data = dataResult;
 
 }
 
