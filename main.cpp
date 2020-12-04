@@ -9,6 +9,7 @@
 #include <vector>
 #include <cstddef>
 #include <math.h>
+#include <filesystem>
 using namespace std;
 
 struct Color {
@@ -23,8 +24,7 @@ struct BMP
     vector<vector<Color>> data;
 };
 
-
-int readBMP(string *filename, BMP* bmp)
+bool readBMP(string *filename, BMP* bmp)
 {
     FILE *f = fopen(filename->c_str(), "rb");
 
@@ -43,22 +43,24 @@ int readBMP(string *filename, BMP* bmp)
     if((int)dims != 1){
         cerr << "Header error:" << endl;
         cerr << "Illegal number of planes" << endl;
-        return -1;
+        return false;
     }
 
     byte pointSize = *(byte *)&bmp->header[29] << 8 | *(byte *)&bmp->header[28];
     if((int)pointSize != 24){
         cerr << "Header error:" << endl;
         cerr << "Bit count is not 24" << endl;
-        return -1;
+        return false;
     }
 
     int compression = *(int *)&bmp->header[30];
     if(compression != 0) {
         cerr << "Header error:" << endl;
         cerr << "Compression value is not 0" << endl;
-        return -1;
+        return false;
     }
+
+    cout << *filename << endl;
 
     int width = *(int *)&bmp->header[18];
     int height = *(int *)&bmp->header[22];
@@ -66,7 +68,7 @@ int readBMP(string *filename, BMP* bmp)
     bmp->data.resize(height);
 
     // Padding for each row
-    int padding = 4 - (3 * width % 4);
+    int padding = (4 - (3 * width % 4)) % 4;
 
     for (int i = 0; i < height; i++) {
         bmp->data[i].resize(width);
@@ -82,6 +84,7 @@ int readBMP(string *filename, BMP* bmp)
     }
 
     fclose(f);
+    return true;
 }
 
 void writeInByteArray(byte* dest, byte info[], uint infoSize ){
@@ -90,13 +93,12 @@ void writeInByteArray(byte* dest, byte info[], uint infoSize ){
     }
 }
 
-void writeBMP(BMP *bmp, string *dir)
+void writeBMP(string *filename, BMP *bmp)
 {
-    dir->append("/out.bmp");
-    FILE *f = fopen(dir->c_str(), "wb");
+    FILE *f = fopen(filename->c_str(), "wb");
     int width = bmp->data[0].size();
     int height = bmp->data.size();
-    int padding = 4 - (3 * width % 4);
+    int padding = (4 - (3 * width % 4)) % 4;
 
     int zero = 0;
     byte* zeroArray = static_cast<byte*> (static_cast<void*>(&zero));
@@ -176,7 +178,7 @@ void writeBMP(BMP *bmp, string *dir)
     fclose(f);
 }
 
-bool printError(int argc, char *argv[])
+bool printError(int argc, string *command, string *indir, string *outdir)
 {
     if (argc != 4)
     {
@@ -185,47 +187,36 @@ bool printError(int argc, char *argv[])
         return true;
     }
 
-    if (strcmp(argv[1], "copy") != 0 && strcmp(argv[1], "gauss") != 0 && strcmp(argv[1], "sobel") != 0)
+    if (command->compare("copy") && command->compare("gauss") && command->compare("sobel"))
     {
-        cerr << "Unexpected operation:" << argv[1] << "\n"
+        cerr << "Unexpected operation:" << *command << "\n"
              << endl;
         cerr << "\timage-seq operation in_path out_path\n\t\toperation: copy, gauss, sobel\n";
         return true;
     }
 
-    FILE *pFile = fopen(argv[2], "rb");
+     DIR *dr = opendir(indir->c_str());
 
-    if (pFile == NULL)
-    {
-        cerr << "Input path: " << argv[2] << "\nOutput path: " << argv[3] << "\nCannot open file [" << argv[2] << "]" << endl;
-        cerr << "\timage-seq operation in_path out_path\n\t\toperation: copy, gauss, sobel\n";
-        return true;
-    }
-    fclose(pFile);
+     if (dr == NULL)
+     {
+         cerr << "Input path: " << *indir << "\nOutput path: " << *outdir << "\nCannot open file [" << *indir << "]" << endl;
+         cerr << "\timage-seq operation in_path out_path\n\t\toperation: copy, gauss, sobel\n";
+         return true;
+     }
+     closedir(dr);
 
-    DIR *dr;
-    dr = opendir(argv[3]);
+    dr = opendir(outdir->c_str());
 
     if (dr == NULL)
     {
-        cerr << "Input path: " << argv[2] << "\nOutput path: " << argv[3] << "\nOutput directory [" << argv[3] << "] does not exist" << endl;
+        cerr << "Input path: " << *indir << "\nOutput path: " << *outdir << "\nOutput directory [" << *indir << "] does not exist" << endl;
         cerr << "\timage-seq operation in_path out_path\n\t\toperation: copy, gauss, sobel\n";
     }
     closedir(dr);
 
-    //Falta comprobarsi los paramatros de la imagen cumple los necesarios
-
-
     return false;
 }
 
-// bool copyFile(const char *SRC, const char* DEST)
-// {
-//     ifstream src(SRC, ios::binary);
-//     ofstream dest(DEST, ios::binary);
-//     dest << src.rdbuf();
-//     return src && dest;
-// }
 
 void gauss (BMP *bmp){
 
@@ -268,12 +259,12 @@ void gauss (BMP *bmp){
 void sobel (BMP *bmp)
 {
     vector<vector<int>> x = {{1, 2, 1},
-                            {0, 0, 0},
-                            {-1, -2, -1}};
+                             {0, 0, 0},
+                             {-1, -2, -1}};
 
     vector<vector<int>> y = {{-1, 0, 1},
-                        {-2, 0, 2},
-                        {-1, 0, 1}};
+                             {-2, 0, 2},
+                             {-1, 0, 1}};
 
     int w = 8;
     vector<vector<Color>> dataResult;
@@ -331,40 +322,48 @@ void restaBMP (BMP *bmp1, BMP * bmp2){
 
 int main(int argc, char *argv[])
 {
-//    if (printError(argc, argv))
+    string command = string(argv[1]);
+    string indirPath = string(argv[2]);
+    string outdirPath = string(argv[3]);
+
+     if (printError(argc, &command, &indirPath, &outdirPath))
+     {
+         return -1;
+     }
+
+    for (const auto & entry : filesystem::directory_iterator(indirPath)) {
+        // Lectura del archivo bmp
+        BMP bmp;
+        auto path = entry.path();
+
+        string infilePath = path.relative_path().string();
+        string infileName = path.filename().string();
+        string outfilePath = outdirPath + '/' + infileName;
+
+        if(readBMP(&infilePath, &bmp)) {
+            // Ejecución de las funciones
+            if(!command.compare("gauss"))
+            {
+                gauss(&bmp);
+            }
+            if(!command.compare("sobel"))
+            {
+                gauss(&bmp);
+                sobel(&bmp);
+            }
+            writeBMP(&outfilePath, &bmp);
+        } else {
+            // se salta
+        }
+    }
+
+//    else if(!strcmp(argv[1], "minus"))
 //    {
-//        return -1;
+//        BMP bmp2;
+//        string filename2 = string (argv[4]);
+//        readBMP(&filename2, &bmp2);
+//        restaBMP(&bmp, &bmp2);
+//        writeBMP(&bmp2, &dir);
 //    }
-
-    // Lectura del archivo bmp
-    BMP bmp;
-    string filename = string (argv[2]);
-    string dir = string (argv[3]);
-    readBMP(&filename, &bmp);
-
-    // Ejecución de las funciones
-    if(!strcmp(argv[1], "copy"))
-    {
-        writeBMP(&bmp, &dir);
-    } else if(!strcmp(argv[1], "gauss"))
-    {
-        gauss(&bmp);
-        writeBMP(&bmp, &dir);
-    } else if(!strcmp(argv[1], "sobel"))
-    {
-        gauss(&bmp);
-        sobel(&bmp);
-        writeBMP(&bmp, &dir);
-    }
-    else if(!strcmp(argv[1], "minus"))
-    {
-        BMP bmp2;
-        string filename2 = string (argv[4]);
-        readBMP(&filename2, &bmp2);
-        restaBMP(&bmp, &bmp2);
-        writeBMP(&bmp2, &dir);
-    }
-
-
     return 0;
 }
