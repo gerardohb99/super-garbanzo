@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <cstddef>
+#include <math.h>
 using namespace std;
 
 struct Color {
@@ -64,12 +65,8 @@ int readBMP(string *filename, BMP* bmp)
 
     bmp->data.resize(height);
 
-    fseek(f, start, SEEK_SET);
-
-
-    //Move
-
-    int padding = (4 -(3*width%4))%4;
+    // Padding for each row
+    int padding = 4 - (3 * width % 4);
 
     for (int i = 0; i < height; i++) {
         bmp->data[i].resize(width);
@@ -80,10 +77,8 @@ int readBMP(string *filename, BMP* bmp)
             fread(&color.R, sizeof(byte), 1, f);
             bmp->data[i][j] = color;
         }
-        //reading padding
+        // skipping padding
         fseek(f, padding, SEEK_CUR);
-
-
     }
 
     fclose(f);
@@ -101,7 +96,7 @@ void writeBMP(BMP *bmp, string *dir)
     FILE *f = fopen(dir->c_str(), "wb");
     int width = bmp->data[0].size();
     int height = bmp->data.size();
-    int padding = (4 -(3*width%4))%4;
+    int padding = 4 - (3 * width % 4);
 
     int zero = 0;
     byte* zeroArray = static_cast<byte*> (static_cast<void*>(&zero));
@@ -132,7 +127,7 @@ void writeBMP(BMP *bmp, string *dir)
     byte* heightImageArray  = static_cast<byte*> (static_cast<void*>(&height));
     writeInByteArray(&bmp->header[22], heightImageArray, sizeof(int));
 
-    //write dims number OJO, SOLO ESTOY ESCRIBIENDO 2 BYTES PREGUNTAR ERWOR (EN DEBUG FUNCINA)
+    //write dims number only first 2 bytes
     int dims = 1;
     byte* dimsArray  = static_cast<byte*> (static_cast<void*>(&dims));
     writeInByteArray(&bmp->header[26], dimsArray, 2);
@@ -310,17 +305,10 @@ void sobel (BMP *bmp)
                     }
                 }
             }
-            RX = RX/w;
-            GX = GX/w;
-            BX = BX/w;
 
-            RY = RY/w;
-            GY = GY/w;
-            BY = BY/w;
-
-            dataResult[i][j].R = (byte)(abs(RX) + abs(RY));
-            dataResult[i][j].G = (byte)(abs(GX) + abs(GY));
-            dataResult[i][j].B = (byte)(abs(BX) + abs(BY));
+            dataResult[i][j].R = (byte)((abs(RX) + abs(RY)) / w);
+            dataResult[i][j].G = (byte)((abs(GX) + abs(GY)) / w);
+            dataResult[i][j].B = (byte)((abs(BX) + abs(BY)) / w);
         }
     }
     bmp->data = dataResult;
