@@ -10,7 +10,9 @@
 #include <cstddef>
 #include <math.h>
 #include <filesystem>
+#include <chrono>
 using namespace std;
+using namespace chrono;
 
 struct Color {
     byte R;
@@ -322,6 +324,7 @@ void restaBMP (BMP *bmp1, BMP * bmp2){
 
 int main(int argc, char *argv[])
 {
+    auto startTotal= system_clock::now();
     string command = string(argv[1]);
     string indirPath = string(argv[2]);
     string outdirPath = string(argv[3]);
@@ -332,6 +335,7 @@ int main(int argc, char *argv[])
      }
 
     for (const auto & entry : filesystem::directory_iterator(indirPath)) {
+        auto start = system_clock::now();
         // Lectura del archivo bmp
         BMP bmp;
         auto path = entry.path();
@@ -340,21 +344,47 @@ int main(int argc, char *argv[])
         string infileName = path.filename().string();
         string outfilePath = outdirPath + '/' + infileName;
 
-        if(readBMP(&infilePath, &bmp)) {
+        auto startLoad = system_clock::now();
+        bool load = readBMP(&infilePath, &bmp);
+        auto endLoad = system_clock::now();
+        auto loadTime = duration_cast<microseconds>(endLoad - startLoad);
+        cout << "Load time: " << loadTime.count() << " microseconds" << endl;
+        if(load) {
             // Ejecución de las funciones
             if(!command.compare("gauss"))
             {
+                auto startGauss = system_clock::now();
                 gauss(&bmp);
+                auto endGauss = system_clock::now();
+                auto gaussTime = duration_cast<microseconds>(endGauss - startGauss);
+                cout << "Gauss time: " << gaussTime.count() << " microseconds" << endl;
             }
             if(!command.compare("sobel"))
             {
+                auto startGauss = system_clock::now();
                 gauss(&bmp);
+                auto endGauss = system_clock::now();
+                auto gaussTime = duration_cast<microseconds>(endGauss - startGauss);
+                cout << "Gauss time: " << gaussTime.count() << " microseconds" << endl;
+
+                auto startSobel = system_clock::now();
                 sobel(&bmp);
+                auto endSobel = system_clock::now();
+                auto sobelTime = duration_cast<microseconds>(endGauss - startGauss);
+                cout << "Sobel time: " << sobelTime.count() << " microseconds" << endl;
             }
+            auto startStore = system_clock::now();
             writeBMP(&outfilePath, &bmp);
-        } else {
-            // se salta
+            auto endStore = system_clock::now();
+            auto storeTime = duration_cast<microseconds>(endStore - startStore);
+            cout << "Store time: " << storeTime.count() << " microseconds" << endl;
         }
+        auto end = system_clock::now();
+        auto time = duration_cast<microseconds>(end - start);
+        cout << "Total time from picture: " << time.count() << " microseconds \n" << endl;
+
+
+
     }
 
 //    else if(!strcmp(argv[1], "minus"))
@@ -365,5 +395,9 @@ int main(int argc, char *argv[])
 //        restaBMP(&bmp, &bmp2);
 //        writeBMP(&bmp2, &dir);
 //    }
+    auto endTotal = system_clock::now();
+    auto totalTime = duration_cast<microseconds>(endTotal - startTotal);
+    cout<<" \n GLOBAL TIME: "<<totalTime.count()<< " microseconds"<<endl;
+
     return 0;
 }
