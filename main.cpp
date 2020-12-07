@@ -1,16 +1,18 @@
 #include <iostream>
-#include <fstream>
+//#include <fstream>
 #include <dirent.h>
 #include <stdio.h>
 #include <sys/types.h>
-#include <cstring>
+//#include <cstring>
 #include <cstdlib>
 #include <string>
 #include <vector>
 #include <cstddef>
-#include <math.h>
+//#include <math.h>
 #include <filesystem>
 #include <chrono>
+#include <omp.h>
+#include <unistd.h>
 using namespace std;
 using namespace chrono;
 
@@ -72,18 +74,29 @@ bool readBMP(string *filename, BMP* bmp)
     // Padding for each row
     int padding = (4 - (3 * width % 4)) % 4;
 
-    for (int i = 0; i < height; i++) {
-        bmp->data[i].resize(width);
-        for (int j = 0; j < width; j++){
-            Color color;
-            fread(&color.B, sizeof(byte), 1, f);
-            fread(&color.G, sizeof(byte), 1, f);
-            fread(&color.R, sizeof(byte), 1, f);
-            bmp->data[i][j] = color;
-        }
+
+    //#pragma omp parallel num_threads(sysconf(_SC_NPROCESSORS_ONLN)) private(f)
+    {
+        //cout<< (int) omp_get_num_threads() << endl;
+        //#pragma omp for
+        for (int i = 0; i < height; i++) {
+            bmp->data[i].resize(width);
+            for (int j = 0; j < width; j++){
+
+                //fseek(f, start + (3*(j + i*(width+padding))), SEEK_SET);
+                Color color;
+                fread(&color.B, sizeof(byte), 1, f);
+                fread(&color.G, sizeof(byte), 1, f);
+                fread(&color.R, sizeof(byte), 1, f);
+
+                //#pragma omp critical
+                bmp->data[i][j] = color;
+            }
         // skipping padding
         fseek(f, padding, SEEK_CUR);
+        }
     }
+
 
     fclose(f);
     return true;
