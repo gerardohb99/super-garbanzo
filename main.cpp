@@ -98,7 +98,8 @@ void writeInByteArray(byte* dest, byte info[], int infoSize){
 
 void writeBMP(string *filename, BMP *bmp)
 {
-    FILE *f = fopen(filename->c_str(), "wb");
+    //FILE *f = fopen(filename->c_str(), "wb");
+    ofstream f (filename->c_str(), ios::out | ios::binary);
     int width = bmp->data[0].size();
     int height = bmp->data.size();
     int padding = (4 - (3 * width % 4)) % 4;
@@ -164,21 +165,21 @@ void writeBMP(string *filename, BMP *bmp)
 
     writeInByteArray(&bmp->header[50], zeroArray, sizeof(int));
 
-    fwrite(&bmp->header[0], sizeof(byte), 54, f);
+    f.write((char*)&bmp->header[0], 54);
 
     byte zeros[8] = { };
 
     for (int i = 0; i < height; i++) {
         for(int j = 0; j < width; j++) {
             Color pixel = bmp->data[i][j];
-            fwrite(&pixel.B, sizeof(byte), 1, f);
-            fwrite(&pixel.G, sizeof(byte), 1, f);
-            fwrite(&pixel.R, sizeof(byte), 1, f);
+            f.write((char*)&pixel.B, 1);
+            f.write((char*)&pixel.G, 1);
+            f.write((char*)&pixel.R, 1);
         }
-        fwrite(&zeros[0], sizeof(byte), padding, f);
+        f.write((char*)&zeros[0], padding);
     }
 
-    fclose(f);
+    f.close();
 }
 
 bool printError(int argc, string *command, string *indir, string *outdir)
