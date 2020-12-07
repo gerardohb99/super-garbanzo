@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <filesystem>
 #include <chrono>
+#include <fstream>
 using namespace std;
 using namespace chrono;
 
@@ -26,17 +27,17 @@ struct BMP
 
 bool readBMP(string *filename, BMP* bmp)
 {
-    FILE *f = fopen(filename->c_str(), "rb");
+    ifstream f (filename->c_str(), ios::in | ios::binary);
 
     // read the first part of the header
     bmp->header.resize(14);
-    fread(&bmp->header[0], sizeof(byte), 14, f);
+    f.read((char*)&bmp->header[0], 14);
     int start = *(int *)&bmp->header[10];
 
     // read the remaining part of the header
-    fseek(f, 0, SEEK_SET);
+    f.seekg(0);
     bmp->header.resize(start);
-    fread(&bmp->header[0], sizeof(byte), start, f);
+    f.read((char*)&bmp->header[0], start);
 
     // Comprobacion de erroresen el header
     byte dims = *(byte *)&bmp->header[27] << 8 | *(byte *)&bmp->header[26];
@@ -75,17 +76,17 @@ bool readBMP(string *filename, BMP* bmp)
         for (int j = 0; j < width; j++){
 
             Color color {};
-            fread(&color.B, sizeof(byte), 1, f);
-            fread(&color.G, sizeof(byte), 1, f);
-            fread(&color.R, sizeof(byte), 1, f);
+            f.read((char*)&color.B, 1);
+            f.read((char*)&color.G, 1);
+            f.read((char*)&color.R, 1);
 
             bmp->data[i][j] = color;
         }
         // skipping padding
-        fseek(f, padding, SEEK_CUR);
+        f.seekg((int)f.tellg() + padding);
     }
 
-    fclose(f);
+    f.close();
     return true;
 }
 
