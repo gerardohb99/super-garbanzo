@@ -11,6 +11,7 @@ using namespace std;
 using namespace chrono;
 
 [[maybe_unused]] int threads = 8;// el compilador no detecta que se esta usando esta variable en los pragmas de openmp
+[[maybe_unused]] int min_image_dimension = 32 * 32;// el compilador no detecta que se esta usando esta variable en los pragmas de openmp
 
 struct Color {
     byte R;
@@ -26,17 +27,17 @@ struct BMP
 
 bool readBMP(string *filename, BMP* bmp)
 {
-    ifstream f (filename->c_str(), ios::in | ios::binary);
+    FILE *f = fopen(filename->c_str(), "rb");
 
     // read the first part of the header
     bmp->header.resize(14);
-    f.read((char*)&bmp->header[0], 14);
+    fread(&bmp->header[0], sizeof(byte), 14, f);
     int start = *(int *)&bmp->header[10];
 
     // read the remaining part of the header
-    f.seekg(0);
+    fseek(f, 0, SEEK_SET);
     bmp->header.resize(start);
-    f.read((char*)&bmp->header[0], start);
+    fread(&bmp->header[0], sizeof(byte), start, f);
 
     // Comprobacion de erroresen el header
     byte dims = *(byte *)&bmp->header[27] << 8 | *(byte *)&bmp->header[26];
@@ -75,17 +76,17 @@ bool readBMP(string *filename, BMP* bmp)
         for (int j = 0; j < width; j++){
 
             Color color {};
-            f.read((char*)&color.B, 1);
-            f.read((char*)&color.G, 1);
-            f.read((char*)&color.R, 1);
+            fread(&color.B, sizeof(byte), 1, f);
+            fread(&color.G, sizeof(byte), 1, f);
+            fread(&color.R, sizeof(byte), 1, f);
 
             bmp->data[i][j] = color;
         }
         // skipping padding
-        f.seekg((int)f.tellg() + padding);
+        fseek(f, padding, SEEK_CUR);
     }
 
-    f.close();
+    fclose(f);
     return true;
 }
 
@@ -97,8 +98,7 @@ void writeInByteArray(byte* dest, byte info[], int infoSize){
 
 void writeBMP(string *filename, BMP *bmp)
 {
-    //FILE *f = fopen(filename->c_str(), "wb");
-    ofstream f (filename->c_str(), ios::out | ios::binary);
+    FILE *f = fopen(filename->c_str(), "wb");
     int width = bmp->data[0].size();
     int height = bmp->data.size();
     int padding = (4 - (3 * width % 4)) % 4;
@@ -164,21 +164,21 @@ void writeBMP(string *filename, BMP *bmp)
 
     writeInByteArray(&bmp->header[50], zeroArray, sizeof(int));
 
-    f.write((char*)&bmp->header[0], 54);
+    fwrite(&bmp->header[0], sizeof(byte), 54, f);
 
     byte zeros[8] = { };
 
     for (int i = 0; i < height; i++) {
         for(int j = 0; j < width; j++) {
             Color pixel = bmp->data[i][j];
-            f.write((char*)&pixel.B, 1);
-            f.write((char*)&pixel.G, 1);
-            f.write((char*)&pixel.R, 1);
+            fwrite(&pixel.B, sizeof(byte), 1, f);
+            fwrite(&pixel.G, sizeof(byte), 1, f);
+            fwrite(&pixel.R, sizeof(byte), 1, f);
         }
-        f.write((char*)&zeros[0], padding);
+        fwrite(&zeros[0], sizeof(byte), padding, f);
     }
 
-    f.close();
+    fclose(f);
 }
 
 bool printError(int argc, string *command, string *indir, string *outdir)
@@ -237,16 +237,15 @@ void gauss (BMP *bmp){
     vector<vector<Color>> dataResult;
     dataResult.resize(height);
 
-
+    int R, G, B = 0;
     int i, j, s, t = 0;
-
-    #pragma omp parallel for private(j, s, t) num_threads(threads) schedule(dynamic)
-    for( i = 0; i < height; i++){
-        for( j = 0; j < width; j++){
+//    #pragma omp parallel for private(j, s, t, R, G, B) num_threads(threads) schedule(dynamic) if(height * width > min_image_dimension)
+    for(i = 0; i < height; i++){
+        for(j = 0; j < width; j++){
+            R = 0;
+            G = 0;
+            B = 0;
             dataResult[i].resize(width);
-            int R = 0;
-            int G = 0;
-            int B = 0;
             for(s = -2; s <= 2; s++){
                 for(t = -2; t <= 2; t++){
                     if(!((i + s) < 0 || (i + s) >= height || (j + t) < 0 || (j + t) > width)) {
@@ -281,20 +280,20 @@ void sobel (BMP *bmp)
     vector<vector<Color>> dataResult;
     dataResult.resize(height);
 
+    int RX, GX, BX, RY, GY, BY = 0;
     int i, j, s, t = 0;
-
-    #pragma omp parallel for private(j, s, t) num_threads(threads) schedule(dynamic)
-    for( i = 0; i < height; i++){
-        for( j = 0; j< width; j++){
+//    #pragma omp parallel for private(j, s, t, RX, GX, BX, RY, GY, BY) num_threads(threads) schedule(dynamic) if(height * width > min_image_dimension)
+    for(i = 0; i < height; i++){
+        for(j = 0; j< width; j++){
             dataResult[i].resize(width);
             //Colors for matrix X
-            int RX = 0;
-            int GX = 0;
-            int BX = 0;
+            RX = 0;
+            GX = 0;
+            BX = 0;
             //Colors for matrix Y
-            int RY = 0;
-            int GY = 0;
-            int BY = 0;
+            RY = 0;
+            GY = 0;
+            BY = 0;
             for( s = -1; s <= 1 ; s++) {
                 for ( t = -1; t <= 1; t++) {
                     if(!((i + s) < 0 || (i + s) >= height || (j + t) < 0 || (j + t) >= width)) {
