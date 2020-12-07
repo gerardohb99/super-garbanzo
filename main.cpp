@@ -241,14 +241,14 @@ void gauss (BMP *bmp){
     int i, j, s, t = 0;
 //    #pragma omp parallel for private(j, s, t, R, G, B) num_threads(threads) schedule(dynamic) if(height * width > min_image_dimension)
     for(i = 0; i < height; i++){
+        dataResult[i].resize(width);
         for(j = 0; j < width; j++){
             R = 0;
             G = 0;
             B = 0;
-            dataResult[i].resize(width);
             for(s = -2; s <= 2; s++){
                 for(t = -2; t <= 2; t++){
-                    if(!((i + s) < 0 || (i + s) >= height || (j + t) < 0 || (j + t) > width)) {
+                    if((i + s) >= 0 && (i + s) < height && (j + t) >= 0 && (j + t) < width) {
                         R += m[s + 2][t + 2] * (int) bmp->data[i + s][j + t].R;
                         G += m[s + 2][t + 2] * (int) bmp->data[i + s][j + t].G;
                         B += m[s + 2][t + 2] * (int) bmp->data[i + s][j + t].B;
@@ -294,9 +294,9 @@ void sobel (BMP *bmp)
             RY = 0;
             GY = 0;
             BY = 0;
-            for( s = -1; s <= 1 ; s++) {
-                for ( t = -1; t <= 1; t++) {
-                    if(!((i + s) < 0 || (i + s) >= height || (j + t) < 0 || (j + t) >= width)) {
+            for(s = -1; s <= 1 ; s++) {
+                for (t = -1; t <= 1; t++) {
+                    if((i + s) >= 0 && (i + s) < height && (j + t) >= 0 && (j + t) < width) {
                         //res x
                         RX += x[s + 1][t + 1] * (int) bmp->data[i + s][j + t].R;
                         GX += x[s + 1][t + 1] * (int) bmp->data[i + s][j + t].G;
