@@ -1,6 +1,5 @@
 #include <iostream>
 #include <dirent.h>
-#include <cstdio>
 #include <cstdlib>
 #include <string>
 #include <vector>
@@ -8,10 +7,11 @@
 #include <filesystem>
 #include <chrono>
 #include <fstream>
+#include <cstring>
 using namespace std;
 using namespace chrono;
 
-int threads = 8;
+[[maybe_unused]] int threads = 8;// el compilador no detecta que se esta usando esta variable en los pragmas de openmp
 
 struct Color {
     byte R;
@@ -191,7 +191,7 @@ bool printError(int argc, string *command, string *indir, string *outdir)
         return true;
     }
 
-    if (command->compare("copy") && command->compare("gauss") && command->compare("sobel"))
+    if (strcmp(command->c_str(),"copy") == 0 && strcmp(command->c_str(),"gauss") == 0 && strcmp(command->c_str(),"sobel") == 0)
     {
         cerr << "Unexpected operation:" << *command << "\n"
              << endl;
@@ -331,20 +331,21 @@ int main(int argc, char *argv[])
         auto start = system_clock::now();
         // Lectura del archivo bmp
         BMP bmp;
-        auto path = entry.path();
+        auto &path = entry.path();
 
         string infilePath = path.relative_path().string();
         string infileName = path.filename().string();
-        string outfilePath = outdirPath + '/' + infileName;
+        string outfilePath;
+        outfilePath.append(outdirPath).append("/").append(infileName);
 
-        auto startLoad = system_clock::now();
+            auto startLoad = system_clock::now();
         bool load = readBMP(&infilePath, &bmp);
         auto endLoad = system_clock::now();
         auto loadTime = duration_cast<microseconds>(endLoad - startLoad);
         cout << "Load time: " << loadTime.count() << " microseconds" << endl;
         if(load) {
             // Ejecución de las funciones
-            if(!command.compare("gauss"))
+            if(strcmp(command.c_str(),"gauss") == 0)
             {
                 auto startGauss = system_clock::now();
                 gauss(&bmp);
@@ -352,7 +353,7 @@ int main(int argc, char *argv[])
                 auto gaussTime = duration_cast<microseconds>(endGauss - startGauss);
                 cout << "Gauss time: " << gaussTime.count() << " microseconds" << endl;
             }
-            if(!command.compare("sobel"))
+            if(strcmp(command.c_str(),"sobel") == 0)
             {
                 auto startGauss = system_clock::now();
                 gauss(&bmp);
