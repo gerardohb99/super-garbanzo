@@ -7,7 +7,6 @@
 #include <filesystem>
 #include <chrono>
 #include <fstream>
-#include <cstring>
 using namespace std;
 using namespace chrono;
 
@@ -191,7 +190,7 @@ bool printError(int argc, string *command, string *indir, string *outdir)
         return true;
     }
 
-    if (strcmp(command->c_str(),"copy") == 0 && strcmp(command->c_str(),"gauss") == 0 && strcmp(command->c_str(),"sobel") == 0)
+    if (*command != "copy" && *command !="gauss" && *command != "sobel")
     {
         cerr << "Unexpected operation:" << *command << "\n"
              << endl;
@@ -345,7 +344,7 @@ int main(int argc, char *argv[])
         cout << "Load time: " << loadTime.count() << " microseconds" << endl;
         if(load) {
             // Ejecución de las funciones
-            if(strcmp(command.c_str(),"gauss") == 0)
+            if(command == "gauss")
             {
                 auto startGauss = system_clock::now();
                 gauss(&bmp);
@@ -353,7 +352,7 @@ int main(int argc, char *argv[])
                 auto gaussTime = duration_cast<microseconds>(endGauss - startGauss);
                 cout << "Gauss time: " << gaussTime.count() << " microseconds" << endl;
             }
-            if(strcmp(command.c_str(),"sobel") == 0)
+            if(command == "sobel")
             {
                 auto startGauss = system_clock::now();
                 gauss(&bmp);
