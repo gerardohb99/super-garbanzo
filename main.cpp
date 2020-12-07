@@ -1,20 +1,16 @@
 #include <iostream>
-//#include <fstream>
 #include <dirent.h>
-#include <stdio.h>
-#include <sys/types.h>
-//#include <cstring>
+#include <cstdio>
 #include <cstdlib>
 #include <string>
 #include <vector>
 #include <cstddef>
-//#include <math.h>
 #include <filesystem>
 #include <chrono>
-#include <omp.h>
-#include <unistd.h>
 using namespace std;
 using namespace chrono;
+
+int threads = 8;
 
 struct Color {
     byte R;
@@ -74,35 +70,26 @@ bool readBMP(string *filename, BMP* bmp)
     // Padding for each row
     int padding = (4 - (3 * width % 4)) % 4;
 
+    for (int i = 0; i < height; i++) {
+        bmp->data[i].resize(width);
+        for (int j = 0; j < width; j++){
 
-    //#pragma omp parallel num_threads(sysconf(_SC_NPROCESSORS_ONLN)) private(f)
-    {
-        //cout<< (int) omp_get_num_threads() << endl;
-        //#pragma omp for
-        for (int i = 0; i < height; i++) {
-            bmp->data[i].resize(width);
-            for (int j = 0; j < width; j++){
+            Color color {};
+            fread(&color.B, sizeof(byte), 1, f);
+            fread(&color.G, sizeof(byte), 1, f);
+            fread(&color.R, sizeof(byte), 1, f);
 
-                //fseek(f, start + (3*(j + i*(width+padding))), SEEK_SET);
-                Color color;
-                fread(&color.B, sizeof(byte), 1, f);
-                fread(&color.G, sizeof(byte), 1, f);
-                fread(&color.R, sizeof(byte), 1, f);
-
-                //#pragma omp critical
-                bmp->data[i][j] = color;
-            }
+            bmp->data[i][j] = color;
+        }
         // skipping padding
         fseek(f, padding, SEEK_CUR);
-        }
     }
-
 
     fclose(f);
     return true;
 }
 
-void writeInByteArray(byte* dest, byte info[], uint infoSize ){
+void writeInByteArray(byte* dest, byte info[], int infoSize){
     for (int i = 0; i < infoSize; i++){
         dest[i] =  info[i];
     }
@@ -212,7 +199,7 @@ bool printError(int argc, string *command, string *indir, string *outdir)
 
      DIR *dr = opendir(indir->c_str());
 
-     if (dr == NULL)
+     if (dr == nullptr)
      {
          cerr << "Input path: " << *indir << "\nOutput path: " << *outdir << "\nCannot open file [" << *indir << "]" << endl;
          cerr << "\timage-seq operation in_path out_path\n\t\toperation: copy, gauss, sobel\n";
@@ -222,7 +209,7 @@ bool printError(int argc, string *command, string *indir, string *outdir)
 
     dr = opendir(outdir->c_str());
 
-    if (dr == NULL)
+    if (dr == nullptr)
     {
         cerr << "Input path: " << *indir << "\nOutput path: " << *outdir << "\nOutput directory [" << *indir << "] does not exist" << endl;
         cerr << "\timage-seq operation in_path out_path\n\t\toperation: copy, gauss, sobel\n";
@@ -242,21 +229,23 @@ void gauss (BMP *bmp){
                              {1, 4, 7, 4, 1}}
     ;
 
+    int height = bmp->data.size();
+    int width = bmp->data[0].size();
 
     int w = 273;
     vector<vector<Color>> dataResult;
-    dataResult.resize(bmp->data.size());
+    dataResult.resize(height);
 
-
-    for(int i = 0; i < bmp->data.size(); i++){
-        for(int j = 0; j < bmp->data[i].size(); j++){
-            dataResult[i].resize(bmp->data[i].size());
-            int R=0;
-            int G=0;
-            int B=0;
+    #pragma omp parallel for num_threads(threads) schedule(dynamic)
+    for(int i = 0; i < height; i++){
+        for(int j = 0; j < width; j++){
+            dataResult[i].resize(width);
+            int R = 0;
+            int G = 0;
+            int B = 0;
             for(int s = -2; s <= 2; s++){
                 for(int t = -2; t <= 2; t++){
-                    if(!((i+s) < 0 || (i+s) >= bmp->data.size() || (j+t) < 0 || (j+t) > bmp->data[i].size())) {
+                    if(!((i + s) < 0 || (i + s) >= height || (j + t) < 0 || (j + t) > width)) {
                         R += m[s + 2][t + 2] * (int) bmp->data[i + s][j + t].R;
                         G += m[s + 2][t + 2] * (int) bmp->data[i + s][j + t].G;
                         B += m[s + 2][t + 2] * (int) bmp->data[i + s][j + t].B;
@@ -281,25 +270,28 @@ void sobel (BMP *bmp)
                              {-2, 0, 2},
                              {-1, 0, 1}};
 
+    int height = bmp->data.size();
+    int width = bmp->data[0].size();
+
     int w = 8;
     vector<vector<Color>> dataResult;
-    dataResult.resize(bmp->data.size());
+    dataResult.resize(height);
 
-
-    for(int i =0; i<bmp->data.size(); i++){
-        for(int j=0; j< bmp->data[i].size(); j++){
-            dataResult[i].resize(bmp->data[i].size());
+    #pragma omp parallel for num_threads(threads) schedule(dynamic)
+    for(int i = 0; i < height; i++){
+        for(int j = 0; j< width; j++){
+            dataResult[i].resize(width);
             //Colors for matrix X
-            int RX=0;
-            int GX=0;
-            int BX=0;
+            int RX = 0;
+            int GX = 0;
+            int BX = 0;
             //Colors for matrix Y
-            int RY=0;
-            int GY=0;
-            int BY=0;
+            int RY = 0;
+            int GY = 0;
+            int BY = 0;
             for(int s = -1; s <= 1 ; s++) {
                 for (int t = -1; t <= 1; t++) {
-                    if(!((i+s) < 0 || (i+s) >= bmp->data.size() || (j+t) < 0 || (j+t) >= bmp->data[i].size())) {
+                    if(!((i + s) < 0 || (i + s) >= height || (j + t) < 0 || (j + t) >= width)) {
                         //res x
                         RX += x[s + 1][t + 1] * (int) bmp->data[i + s][j + t].R;
                         GX += x[s + 1][t + 1] * (int) bmp->data[i + s][j + t].G;
@@ -320,20 +312,6 @@ void sobel (BMP *bmp)
     bmp->data = dataResult;
 
 }
-
-void restaBMP (BMP *bmp1, BMP * bmp2){
-
-    if (bmp1->data.size() == bmp2->data.size() && bmp1->data[0].size() == bmp2->data[0].size()) {
-        for (int i = 0; i < bmp1->data.size(); i++) {
-            for (int j = 0; j < bmp1->data[i].size(); j++) {
-                bmp2->data[i][j].R = (byte)(abs((int) bmp1->data[i][j].R - (int) bmp2->data[i][j].R));
-                bmp2->data[i][j].G = (byte)(abs((int) bmp1->data[i][j].G - (int) bmp2->data[i][j].G));
-                bmp2->data[i][j].B = (byte)(abs((int) bmp1->data[i][j].B - (int) bmp1->data[i][j].B));
-            }
-        }
-    }
-}
-
 
 int main(int argc, char *argv[])
 {
@@ -383,7 +361,7 @@ int main(int argc, char *argv[])
                 auto startSobel = system_clock::now();
                 sobel(&bmp);
                 auto endSobel = system_clock::now();
-                auto sobelTime = duration_cast<microseconds>(endGauss - startGauss);
+                auto sobelTime = duration_cast<microseconds>(endSobel - startSobel);
                 cout << "Sobel time: " << sobelTime.count() << " microseconds" << endl;
             }
             auto startStore = system_clock::now();
@@ -400,14 +378,6 @@ int main(int argc, char *argv[])
 
     }
 
-//    else if(!strcmp(argv[1], "minus"))
-//    {
-//        BMP bmp2;
-//        string filename2 = string (argv[4]);
-//        readBMP(&filename2, &bmp2);
-//        restaBMP(&bmp, &bmp2);
-//        writeBMP(&bmp2, &dir);
-//    }
     auto endTotal = system_clock::now();
     auto totalTime = duration_cast<microseconds>(endTotal - startTotal);
     cout<<" \n GLOBAL TIME: "<<totalTime.count()<< " microseconds"<<endl;
