@@ -237,15 +237,18 @@ void gauss (BMP *bmp){
     vector<vector<Color>> dataResult;
     dataResult.resize(height);
 
-    #pragma omp parallel for num_threads(threads) schedule(dynamic)
-    for(int i = 0; i < height; i++){
-        for(int j = 0; j < width; j++){
+
+    int i, j, s, t = 0;
+
+    #pragma omp parallel for private(j, s, t) num_threads(threads) schedule(dynamic)
+    for( i = 0; i < height; i++){
+        for( j = 0; j < width; j++){
             dataResult[i].resize(width);
             int R = 0;
             int G = 0;
             int B = 0;
-            for(int s = -2; s <= 2; s++){
-                for(int t = -2; t <= 2; t++){
+            for(s = -2; s <= 2; s++){
+                for(t = -2; t <= 2; t++){
                     if(!((i + s) < 0 || (i + s) >= height || (j + t) < 0 || (j + t) > width)) {
                         R += m[s + 2][t + 2] * (int) bmp->data[i + s][j + t].R;
                         G += m[s + 2][t + 2] * (int) bmp->data[i + s][j + t].G;
@@ -278,9 +281,11 @@ void sobel (BMP *bmp)
     vector<vector<Color>> dataResult;
     dataResult.resize(height);
 
-    #pragma omp parallel for num_threads(threads) schedule(dynamic)
-    for(int i = 0; i < height; i++){
-        for(int j = 0; j< width; j++){
+    int i, j, s, t = 0;
+
+    #pragma omp parallel for private(j, s, t) num_threads(threads) schedule(dynamic)
+    for( i = 0; i < height; i++){
+        for( j = 0; j< width; j++){
             dataResult[i].resize(width);
             //Colors for matrix X
             int RX = 0;
@@ -290,8 +295,8 @@ void sobel (BMP *bmp)
             int RY = 0;
             int GY = 0;
             int BY = 0;
-            for(int s = -1; s <= 1 ; s++) {
-                for (int t = -1; t <= 1; t++) {
+            for( s = -1; s <= 1 ; s++) {
+                for ( t = -1; t <= 1; t++) {
                     if(!((i + s) < 0 || (i + s) >= height || (j + t) < 0 || (j + t) >= width)) {
                         //res x
                         RX += x[s + 1][t + 1] * (int) bmp->data[i + s][j + t].R;
