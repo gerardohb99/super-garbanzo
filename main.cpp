@@ -234,12 +234,13 @@ void gauss (BMP *bmp){
     int height = bmp->data.size();
     int width = bmp->data[0].size();
 
+    vector<vector<Color>> data = bmp->data;
     vector<vector<Color>> dataResult {};
     dataResult.resize(height);
 
     int R, G, B;
     int i, j, s, t;
-    #pragma omp parallel for private(j, s, t, R, G, B) num_threads(threads) schedule(dynamic) if(height * width > min_image_dimension)
+    #pragma omp parallel for private(j, s, t, R, G, B) num_threads(threads) schedule(dynamic) if(height * width > min_image_dimension) shared(m, dataResult, data, height, width, w)
     for(i = 0; i < height; i++){
         dataResult[i].resize(width);
         for(j = 0; j < width; j++){
@@ -247,11 +248,9 @@ void gauss (BMP *bmp){
             for(s = -2; s <= 2; s++){
                 for(t = -2; t <= 2; t++){
                     if((i + s) >= 0 && (i + s) < height && (j + t) >= 0 && (j + t) < width) {
-                        int factor = m[s + 2][t + 2];
-                        Color color = bmp->data[i + s][j + t];
-                        R += factor * (int) color.R;
-                        G += factor * (int) color.G;
-                        B += factor * (int) color.B;
+                        R += m[s + 2][t + 2] * (int) data[i + s][j + t].R;
+                        G += m[s + 2][t + 2] * (int) data[i + s][j + t].G;
+                        B += m[s + 2][t + 2] * (int) data[i + s][j + t].B;
                     }
                 }
             }
@@ -277,12 +276,13 @@ void sobel (BMP *bmp)
     int height = bmp->data.size();
     int width = bmp->data[0].size();
 
+    vector<vector<Color>> data = bmp->data;
     vector<vector<Color>> dataResult {};
     dataResult.resize(height);
 
     int RX, GX, BX, RY, GY, BY = 0;
     int i, j, s, t = 0;
-    #pragma omp parallel for private(j, s, t, RX, GX, BX, RY, GY, BY) num_threads(threads) schedule(dynamic) if(height * width > min_image_dimension)
+    #pragma omp parallel for private(j, s, t, RX, GX, BX, RY, GY, BY) num_threads(threads) schedule(dynamic) if(height * width > min_image_dimension) shared(x, y, dataResult, data, height, width, w)
     for(i = 0; i < height; i++){
         for(j = 0; j< width; j++){
             dataResult[i].resize(width);
@@ -293,17 +293,14 @@ void sobel (BMP *bmp)
             for(s = -1; s <= 1 ; s++) {
                 for (t = -1; t <= 1; t++) {
                     if((i + s) >= 0 && (i + s) < height && (j + t) >= 0 && (j + t) < width) {
-                        int xfactor = x[s + 1][t + 1];
-                        int yfactor = y[s + 1][t + 1];
-                        Color color = bmp->data[i + s][j + t];
                         //res x
-                        RX += xfactor * (int) color.R;
-                        GX += xfactor * (int) color.G;
-                        BX += xfactor * (int) color.B;
+                        RX += x[s + 1][t + 1] * (int) data[i + s][j + t].R;
+                        GX += x[s + 1][t + 1] * (int) data[i + s][j + t].G;
+                        BX += x[s + 1][t + 1] * (int) data[i + s][j + t].B;
                         //res y
-                        RY += yfactor * (int) color.R;
-                        GY += yfactor * (int) color.G;
-                        BY += yfactor * (int) color.B;
+                        RY += y[s + 1][t + 1] * (int) data[i + s][j + t].R;
+                        GY += y[s + 1][t + 1] * (int) data[i + s][j + t].G;
+                        BY += y[s + 1][t + 1] * (int) data[i + s][j + t].B;
                     }
                 }
             }
