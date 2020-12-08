@@ -240,7 +240,7 @@ void gauss (BMP *bmp){
 
     int R, G, B = 0;
     int i, j, s, t = 0;
-//    #pragma omp parallel for private(j, s, t, R, G, B) num_threads(threads) schedule(dynamic) if(height * width > min_image_dimension)
+    #pragma omp parallel for private(j, s, t, R, G, B) num_threads(threads) schedule(dynamic) if(height * width > min_image_dimension)
     for(i = 0; i < height; i++){
         dataResult[i].resize(width);
         for(j = 0; j < width; j++){
@@ -283,7 +283,7 @@ void sobel (BMP *bmp)
 
     int RX, GX, BX, RY, GY, BY = 0;
     int i, j, s, t = 0;
-//    #pragma omp parallel for private(j, s, t, RX, GX, BX, RY, GY, BY) num_threads(threads) schedule(dynamic) if(height * width > min_image_dimension)
+    #pragma omp parallel for private(j, s, t, RX, GX, BX, RY, GY, BY) num_threads(threads) schedule(dynamic) if(height * width > min_image_dimension)
     for(i = 0; i < height; i++){
         for(j = 0; j< width; j++){
             dataResult[i].resize(width);
