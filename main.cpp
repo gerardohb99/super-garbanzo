@@ -284,8 +284,8 @@ void sobel (BMP *bmp)
     int i, j, s, t = 0;
     #pragma omp parallel for private(j, s, t, RX, GX, BX, RY, GY, BY) num_threads(threads) schedule(dynamic) if(height * width > min_image_dimension) shared(x, y, dataResult, data, height, width, w)
     for(i = 0; i < height; i++){
+        dataResult[i].resize(width);
         for(j = 0; j< width; j++){
-            dataResult[i].resize(width);
             //Colors for matrix X
             RX = 0, GX = 0, BX = 0;
             //Colors for matrix Y
