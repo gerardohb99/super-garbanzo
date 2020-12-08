@@ -11,6 +11,7 @@ using namespace std;
 using namespace chrono;
 
 [[maybe_unused]] int threads = 8;// el compilador no detecta que se esta usando esta variable en los pragmas de openmp
+[[maybe_unused]] int min_image_dimension = 32 * 32;// el compilador no detecta que se esta usando esta variable en los pragmas de openmp
 
 struct Color {
     byte R;
@@ -238,14 +239,14 @@ void gauss (BMP *bmp){
     dataResult.resize(height);
 
     for(int i = 0; i < height; i++){
+        dataResult[i].resize(width);
         for(int j = 0; j < width; j++){
-            dataResult[i].resize(width);
             int R = 0;
             int G = 0;
             int B = 0;
             for(int s = -2; s <= 2; s++){
                 for(int t = -2; t <= 2; t++){
-                    if(!((i + s) < 0 || (i + s) >= height || (j + t) < 0 || (j + t) > width)) {
+                    if((i + s) >= 0 && (i + s) < height && (j + t) >= 0 && (j + t) < width) {
                         R += m[s + 2][t + 2] * (int) bmp->data[i + s][j + t].R;
                         G += m[s + 2][t + 2] * (int) bmp->data[i + s][j + t].G;
                         B += m[s + 2][t + 2] * (int) bmp->data[i + s][j + t].B;
@@ -290,7 +291,7 @@ void sobel (BMP *bmp)
             int BY = 0;
             for(int s = -1; s <= 1 ; s++) {
                 for (int t = -1; t <= 1; t++) {
-                    if(!((i + s) < 0 || (i + s) >= height || (j + t) < 0 || (j + t) >= width)) {
+                    if((i + s) >= 0 && (i + s) < height && (j + t) >= 0 && (j + t) < width) {
                         //res x
                         RX += x[s + 1][t + 1] * (int) bmp->data[i + s][j + t].R;
                         GX += x[s + 1][t + 1] * (int) bmp->data[i + s][j + t].G;
