@@ -276,8 +276,8 @@ void sobel (BMP *bmp)
     dataResult.resize(height);
 
     for(int i = 0; i < height; i++){
+        dataResult[i].resize(width);
         for(int j = 0; j< width; j++){
-            dataResult[i].resize(width);
             //Colors for matrix X
             int RX = 0;
             int GX = 0;
