@@ -338,8 +338,8 @@ int main(int argc, char *argv[])
         bool load = readBMP(&infilePath, &bmp);
         auto endLoad = system_clock::now();
         auto loadTime = duration_cast<microseconds>(endLoad - startLoad);
-        cout << "Load time: " << loadTime.count() << " microseconds" << endl;
         if(load) {
+            cout << "Load time: " << loadTime.count() << " microseconds" << endl;
             // Ejecución de las funciones
             if(command == "gauss")
             {
