@@ -10,9 +10,6 @@
 using namespace std;
 using namespace chrono;
 
-[[maybe_unused]] int threads = 8;// el compilador no detecta que se esta usando esta variable en los pragmas de openmp
-[[maybe_unused]] int min_image_dimension = 32 * 32;// el compilador no detecta que se esta usando esta variable en los pragmas de openmp
-
 struct Color {
     byte R;
     byte G;
