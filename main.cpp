@@ -210,8 +210,9 @@ bool printError(int argc, string *command, string *indir, string *outdir)
 
     if (dr == nullptr)
     {
-        cerr << "Input path: " << *indir << "\nOutput path: " << *outdir << "\nOutput directory [" << *indir << "] does not exist" << endl;
+        cerr << "Input path: " << *indir << "\nOutput path: " << *outdir << "\nOutput directory [" << *outdir << "] does not exist" << endl;
         cerr << "\timage-seq operation in_path out_path\n\t\toperation: copy, gauss, sobel\n";
+        return true;
     }
     closedir(dr);
 
