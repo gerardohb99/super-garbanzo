@@ -1,5 +1,4 @@
 #include <iostream>
-#include <dirent.h>
 #include <cstdlib>
 #include <string>
 #include <vector>
@@ -7,12 +6,19 @@
 #include <filesystem>
 #include <chrono>
 #include <fstream>
+#include <optional>
 using namespace std;
 using namespace chrono;
 
 // el compilador no detecta que se esten usando estas variable en los pragmas de openmp
 [[maybe_unused]] int threads = 8;
 [[maybe_unused]] int min_image_dimension = 32 * 32;
+
+optional<string> argument(char* str) {
+    if (str != nullptr && str[0] != '\0')
+        return string(str);
+    return "";
+}
 
 struct Color {
     byte R;
@@ -75,7 +81,6 @@ bool readBMP(string *filename, BMP* bmp)
     for (int i = 0; i < height; i++) {
         bmp->data[i].resize(width);
         for (int j = 0; j < width; j++){
-
             Color color {};
             f.read((char*)&color.B, 1);
             f.read((char*)&color.G, 1);
@@ -187,36 +192,30 @@ bool printError(int argc, string *command, string *indir, string *outdir)
     if (argc != 4)
     {
         cerr << "Wrong format:" << endl;
-        cerr << "\timage-seq operation in_path out_path\n\t\toperation: copy, gauss, sobel\n";
+        cerr << "\timage-seq operation in_path out_path\n\t\toperation: copy, gauss, sobel" << endl;
         return true;
     }
 
-    if (*command != "copy" && *command !="gauss" && *command != "sobel")
+    if (*command != "copy" && *command != "gauss" && *command != "sobel")
     {
-        cerr << "Unexpected operation:" << *command << "\n"
-             << endl;
-        cerr << "\timage-seq operation in_path out_path\n\t\toperation: copy, gauss, sobel\n";
+        cerr << "Unexpected operation:" << *command << endl;
+        cerr << "\timage-seq operation in_path out_path\n\t\toperation: copy, gauss, sobel" << endl;
         return true;
     }
 
-     DIR *dr = opendir(indir->c_str());
-
-     if (dr == nullptr)
-     {
-         cerr << "Input path: " << *indir << "\nOutput path: " << *outdir << "\nCannot open file [" << *indir << "]" << endl;
-         cerr << "\timage-seq operation in_path out_path\n\t\toperation: copy, gauss, sobel\n";
-         return true;
-     }
-     closedir(dr);
-
-    dr = opendir(outdir->c_str());
-
-    if (dr == nullptr)
+    if (!filesystem::exists(indir->c_str()))
     {
-        cerr << "Input path: " << *indir << "\nOutput path: " << *outdir << "\nOutput directory [" << *indir << "] does not exist" << endl;
-        cerr << "\timage-seq operation in_path out_path\n\t\toperation: copy, gauss, sobel\n";
+        cerr << "Input path: " << *indir << "\nOutput path: " << *outdir << "\nCannot open directory [" << *indir << "]" << endl;
+        cerr << "\timage-seq operation in_path out_path\n\t\toperation: copy, gauss, sobel" << endl;
+        return true;
     }
-    closedir(dr);
+
+    if (!filesystem::exists(outdir->c_str()))
+    {
+        cerr << "Input path: " << *indir << "\nOutput path: " << *outdir << "\nOutput directory [" << *outdir << "] does not exist" << endl;
+        cerr << "\timage-seq operation in_path out_path\n\t\toperation: copy, gauss, sobel" << endl;
+        return true;
+    }
 
     return false;
 }
@@ -224,6 +223,7 @@ bool printError(int argc, string *command, string *indir, string *outdir)
 
 void gauss (BMP *bmp){
 
+    int w = 273;
     vector<vector<int>> m = {{1, 4, 7, 4, 1},
                              {4, 16, 26, 16, 4},
                              {7, 26, 41, 26, 7},
@@ -234,25 +234,24 @@ void gauss (BMP *bmp){
     int height = bmp->data.size();
     int width = bmp->data[0].size();
 
-    int w = 273;
-    vector<vector<Color>> dataResult;
+    vector<vector<Color>> dataResult {};
     dataResult.resize(height);
 
-    int R, G, B = 0;
-    int i, j, s, t = 0;
+    int R, G, B;
+    int i, j, s, t;
     #pragma omp parallel for private(j, s, t, R, G, B) num_threads(threads) schedule(dynamic) if(height * width > min_image_dimension)
     for(i = 0; i < height; i++){
         dataResult[i].resize(width);
         for(j = 0; j < width; j++){
-            R = 0;
-            G = 0;
-            B = 0;
+            R = 0, G = 0, B = 0;
             for(s = -2; s <= 2; s++){
                 for(t = -2; t <= 2; t++){
                     if((i + s) >= 0 && (i + s) < height && (j + t) >= 0 && (j + t) < width) {
-                        R += m[s + 2][t + 2] * (int) bmp->data[i + s][j + t].R;
-                        G += m[s + 2][t + 2] * (int) bmp->data[i + s][j + t].G;
-                        B += m[s + 2][t + 2] * (int) bmp->data[i + s][j + t].B;
+                        int factor = m[s + 2][t + 2];
+                        Color color = bmp->data[i + s][j + t];
+                        R += factor * (int) color.R;
+                        G += factor * (int) color.G;
+                        B += factor * (int) color.B;
                     }
                 }
             }
@@ -261,15 +260,16 @@ void gauss (BMP *bmp){
             dataResult[i][j].B = (byte) (B / w);
         }
     }
+
     bmp->data = dataResult;
 }
 
 void sobel (BMP *bmp)
 {
+    int w = 8;
     vector<vector<int>> x = {{1, 2, 1},
                              {0, 0, 0},
                              {-1, -2, -1}};
-
     vector<vector<int>> y = {{-1, 0, 1},
                              {-2, 0, 2},
                              {-1, 0, 1}};
@@ -277,8 +277,7 @@ void sobel (BMP *bmp)
     int height = bmp->data.size();
     int width = bmp->data[0].size();
 
-    int w = 8;
-    vector<vector<Color>> dataResult;
+    vector<vector<Color>> dataResult {};
     dataResult.resize(height);
 
     int RX, GX, BX, RY, GY, BY = 0;
@@ -288,24 +287,23 @@ void sobel (BMP *bmp)
         for(j = 0; j< width; j++){
             dataResult[i].resize(width);
             //Colors for matrix X
-            RX = 0;
-            GX = 0;
-            BX = 0;
+            RX = 0, GX = 0, BX = 0;
             //Colors for matrix Y
-            RY = 0;
-            GY = 0;
-            BY = 0;
+            RY = 0, GY = 0, BY = 0;
             for(s = -1; s <= 1 ; s++) {
                 for (t = -1; t <= 1; t++) {
                     if((i + s) >= 0 && (i + s) < height && (j + t) >= 0 && (j + t) < width) {
+                        int xfactor = x[s + 1][t + 1];
+                        int yfactor = y[s + 1][t + 1];
+                        Color color = bmp->data[i + s][j + t];
                         //res x
-                        RX += x[s + 1][t + 1] * (int) bmp->data[i + s][j + t].R;
-                        GX += x[s + 1][t + 1] * (int) bmp->data[i + s][j + t].G;
-                        BX += x[s + 1][t + 1] * (int) bmp->data[i + s][j + t].B;
+                        RX += xfactor * (int) color.R;
+                        GX += xfactor * (int) color.G;
+                        BX += xfactor * (int) color.B;
                         //res y
-                        RY += y[s + 1][t + 1] * (int) bmp->data[i + s][j + t].R;
-                        GY += y[s + 1][t + 1] * (int) bmp->data[i + s][j + t].G;
-                        BY += y[s + 1][t + 1] * (int) bmp->data[i + s][j + t].B;
+                        RY += yfactor * (int) color.R;
+                        GY += yfactor * (int) color.G;
+                        BY += yfactor * (int) color.B;
                     }
                 }
             }
@@ -315,26 +313,26 @@ void sobel (BMP *bmp)
             dataResult[i][j].B = (byte)((abs(BX) + abs(BY)) / w);
         }
     }
-    bmp->data = dataResult;
 
+    bmp->data = dataResult;
 }
 
 int main(int argc, char *argv[])
 {
-    auto startTotal= system_clock::now();
-    string command = string(argv[1]);
-    string indirPath = string(argv[2]);
-    string outdirPath = string(argv[3]);
+    auto startTotal = system_clock::now();
+    string command = argument(argv[1]).value_or("");
+    string indirPath = argument(argv[2]).value_or("");
+    string outdirPath = argument(argv[3]).value_or("");
 
-     if (printError(argc, &command, &indirPath, &outdirPath))
-     {
-         return -1;
-     }
+    if (printError(argc, &command, &indirPath, &outdirPath))
+    {
+        return -1;
+    }
 
     for (const auto & entry : filesystem::directory_iterator(indirPath)) {
         auto start = system_clock::now();
         // Lectura del archivo bmp
-        BMP bmp;
+        BMP bmp {};
         auto &path = entry.path();
 
         string infilePath = path.relative_path().string();
@@ -342,14 +340,15 @@ int main(int argc, char *argv[])
         string outfilePath;
         outfilePath.append(outdirPath).append("/").append(infileName);
 
-            auto startLoad = system_clock::now();
+        auto startLoad = system_clock::now();
         bool load = readBMP(&infilePath, &bmp);
         auto endLoad = system_clock::now();
         auto loadTime = duration_cast<microseconds>(endLoad - startLoad);
         cout << "Load time: " << loadTime.count() << " microseconds" << endl;
+
         if(load) {
             // Ejecución de las funciones
-            if(command == "gauss")
+            if(command == "gauss" || command == "sobel")
             {
                 auto startGauss = system_clock::now();
                 gauss(&bmp);
@@ -359,35 +358,28 @@ int main(int argc, char *argv[])
             }
             if(command == "sobel")
             {
-                auto startGauss = system_clock::now();
-                gauss(&bmp);
-                auto endGauss = system_clock::now();
-                auto gaussTime = duration_cast<microseconds>(endGauss - startGauss);
-                cout << "Gauss time: " << gaussTime.count() << " microseconds" << endl;
-
                 auto startSobel = system_clock::now();
                 sobel(&bmp);
                 auto endSobel = system_clock::now();
                 auto sobelTime = duration_cast<microseconds>(endSobel - startSobel);
                 cout << "Sobel time: " << sobelTime.count() << " microseconds" << endl;
             }
+
             auto startStore = system_clock::now();
             writeBMP(&outfilePath, &bmp);
             auto endStore = system_clock::now();
             auto storeTime = duration_cast<microseconds>(endStore - startStore);
             cout << "Store time: " << storeTime.count() << " microseconds" << endl;
         }
+
         auto end = system_clock::now();
         auto time = duration_cast<microseconds>(end - start);
-        cout << "Total time from picture: " << time.count() << " microseconds \n" << endl;
-
-
-
+        cout << "Total time from picture: " << time.count() << " microseconds\n" << endl;
     }
 
     auto endTotal = system_clock::now();
     auto totalTime = duration_cast<microseconds>(endTotal - startTotal);
-    cout<<" \n GLOBAL TIME: "<<totalTime.count()<< " microseconds"<<endl;
+    cout<<"\nGLOBAL TIME: "<<totalTime.count()<< " microseconds"<<endl;
 
     return 0;
 }
